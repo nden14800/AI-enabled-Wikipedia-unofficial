@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI機能付きWikipedia(非公式)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Reset */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Color Variables */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #202124;
+            --secondary-text-color: #5f6368;
+            --primary-color: #1a73e8;
+            --border-color: #dadce0;
+            --search-bg-color: #f1f3f4;
+            --search-bg-hover-color: #e8eaed;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --active-tab-border: #1a73e8;
+            --toc-bg: #f8f9fa;
+            --header-bg-color: rgba(255, 255, 255, 0.95);
+            --spinner-color: #1a73e8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #202124;
+                --text-color: #e8eaed;
+                --secondary-text-color: #9aa0a6;
+                --primary-color: #8ab4f8;
+                --border-color: #3c4043;
+                --search-bg-color: #303134;
+                --search-bg-hover-color: #3c4043;
+                --shadow-color: rgba(0, 0, 0, 0.3);
+                --active-tab-border: #8ab4f8;
+                --toc-bg: #292a2d;
+                --header-bg-color: rgba(32, 33, 36, 0.95);
+                --spinner-color: #8ab4f8;
+            }
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            line-height: 1.6;
+        }
+
+        input, textarea {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Global Header --- */
+        .global-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            background-color: var(--header-bg-color);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+        
+        .site-title-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 0.5rem 0;
+        }
+
+        .header-center {
+            flex-grow: 1;
+            max-width: 720px;
+            margin: 0 1rem;
+        }
+        
+        .header-right {
+             flex-shrink: 0;
+        }
+
+        /* Common Search Container styles */
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-container form {
+            display: flex;
+        }
+
+        .search-container input[type="text"] {
+            width: 100%;
+            padding: 0.7rem 1.5rem 0.7rem 3rem;
+            font-size: 1rem;
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            background-color: var(--search-bg-color);
+            color: var(--text-color);
+            outline: none;
+        }
+        
+        .search-container input[type="text"]:hover,
+        .search-container input[type="text"]:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 1px 6px var(--shadow-color);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary-text-color);
+            pointer-events: none;
+        }
+        .search-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .suggestions-box {
+            position: absolute;
+            width: 100%;
+            list-style: none;
+            text-align: left;
+            margin-top: 4px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px var(--shadow-color);
+            display: none;
+            z-index: 1001;
+        }
+        .suggestions-box li {
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+        }
+        .suggestions-box li:hover {
+            background-color: var(--search-bg-hover-color);
+        }
+
+        /* --- Main Page --- */
+        #main-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            padding: 2rem;
+        }
+        
+        .main-content {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .main-content h1 {
+            font-size: 2.5rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+        }
+
+        /* --- Article Page --- */
+        #article-page {
+            display: none;
+            flex-direction: column;
+            height: calc(100vh - 61px);
+        }
+        
+        .article-sub-header {
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            background-color: var(--bg-color);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .tab {
+            padding: 0.8rem 0;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--secondary-text-color);
+            font-size: 1rem;
+            position: relative;
+        }
+        .tab.active {
+            color: var(--primary-color);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--active-tab-border);
+            border-radius: 3px;
+        }
+        
+        .article-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+        }
+        
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--secondary-text-color);
+            padding: 0.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-btn:hover {
+            background-color: var(--search-bg-hover-color);
+        }
+        .action-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .article-content-wrapper {
+            display: flex;
+            flex-grow: 1;
+            overflow-y: hidden;
+        }
+
+        /* --- Table of Contents --- */
+        #toc-container {
+            width: 280px;
+            padding: 1.5rem;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            background-color: var(--toc-bg);
+            transition: width 0.3s, padding 0.3s, opacity 0.3s;
+            flex-shrink: 0;
+        }
+        #toc-container.hidden {
+            width: 0;
+            padding: 1.5rem 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #toc-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        #toc-list { list-style: none; }
+        #toc-list ul { list-style: none; padding-left: 1rem; }
+        #toc-list a {
+            text-decoration: none;
+            color: var(--secondary-text-color);
+            display: block;
+            padding: 0.3rem 0;
+            border-left: 2px solid transparent;
+            padding-left: 0.5rem;
+        }
+        #toc-list a:hover {
+            color: var(--text-color);
+            background-color: var(--search-bg-hover-color);
+        }
+        #toc-list a.active-section {
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+        }
+
+        /* --- Article/AI View --- */
+        .content-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 2rem 4rem;
+        }
+
+        .content { display: none; max-width: 800px; margin: 0 auto; }
+        .content.active { display: block; }
+        #article-title-main {
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+        
+        #ai-summary {
+            background-color: var(--search-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        #ai-summary-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+        }
+        #ai-summary-header svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--primary-color);
+        }
+        #ai-summary-content {
+            color: var(--text-color);
+        }
+
+
+        #article-body h2, #article-body h3, #article-body h4 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #article-body a { color: var(--primary-color); }
+
+        /* --- AI Mode --- */
+        #ai-mode-content { height: 100%; display: flex; flex-direction: column; }
+        .chat-container { flex-grow: 1; overflow-y: auto; padding: 1rem; }
+        .chat-message { max-width: 80%; margin-bottom: 1rem; padding: 0.8rem 1rem; border-radius: 18px; line-height: 1.5; }
+        .user-message { background-color: var(--primary-color); color: var(--bg-color); margin-left: auto; border-bottom-right-radius: 4px; }
+        .ai-message { background-color: var(--search-bg-color); color: var(--text-color); margin-right: auto; border-bottom-left-radius: 4px; }
+        .ai-disclaimer { font-size: 0.8rem; color: var(--secondary-text-color); text-align: center; margin-top: 1rem; padding: 0 1rem; }
+        .ai-input-form { display: flex; padding: 1rem; border-top: 1px solid var(--border-color); }
+        #ai-input { flex-grow: 1; padding: 0.8rem; border-radius: 20px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); outline: none; resize: none; }
+        #ai-send-btn { background: none; border: none; cursor: pointer; color: var(--primary-color); padding: 0.5rem 1rem; display: flex; align-items: center; }
+        #ai-send-btn svg { width: 24px; height: 24px; }
+
+        /* Hide header elements on main page */
+        body:not(.article-view) .global-header { display: none; }
+        
+        /* --- Loading Spinner Styles --- */
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            animation: rotate 1s linear infinite;
+            transform-origin: center center;
+        }
+        .loading-spinner .path {
+            stroke: var(--spinner-color);
+            stroke-linecap: round;
+            stroke-dasharray: 89 150;
+            stroke-dashoffset: 0;
+        }
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header class="global-header">
+        <div class="header-left">
+            <a href="#" class="site-title-btn">AI機能付きWikipedia(非公式)</a>
+        </div>
+        <div class="header-center">
+            <div class="search-container">
+                <form id="search-form-header">
+                    <div class="search-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                    </div>
+                    <input type="text" id="search-box-header" placeholder="検索" autocomplete="off">
+                </form>
+                <ul id="suggestions-box-header" class="suggestions-box"></ul>
+            </div>
+        </div>
+        <div class="header-right">
+            <!-- Settings button removed -->
+        </div>
+    </header>
+
+    <div class="container">
+        <main id="main-page">
+            <div class="main-content">
+                <h1>AI機能付きWikipedia(非公式)</h1>
+                <div class="search-container">
+                    <form id="search-form-main">
+                         <div class="search-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                        </div>
+                        <input type="text" id="search-box-main" placeholder="検索" autocomplete="off">
+                    </form>
+                    <ul id="suggestions-box-main" class="suggestions-box"></ul>
+                </div>
+            </div>
+        </main>
+
+        <div id="article-page">
+            <div class="article-sub-header">
+                <nav class="tabs">
+                    <button class="tab active" data-target="ai-mode">AI モード</button>
+                    <button class="tab" data-target="article">記事</button>
+                </nav>
+                <div class="article-actions">
+                     <button class="action-btn" id="toc-toggle-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-list" viewBox="0 0 16 16">
+                          <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="article-content-wrapper">
+                <aside id="toc-container">
+                    <h2 id="toc-title">目次</h2>
+                    <ul id="toc-list"></ul>
+                </aside>
+                <div class="content-container">
+                    <h1 id="article-title-main"></h1>
+                    <div id="ai-summary">
+                        <div id="ai-summary-header">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stars" viewBox="0 0 16 16"><path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/></svg>
+                            <span>AI による概要</span>
+                        </div>
+                        <div id="ai-summary-content"></div>
+                    </div>
+                    <div id="ai-mode" class="content active">
+                        <div id="ai-mode-content">
+                            <div class="chat-container"></div>
+                            <div class="ai-disclaimer">AI の回答には間違いが含まれている場合があります。</div>
+                            <form class="ai-input-form" id="ai-input-form">
+                                <textarea id="ai-input" placeholder="この記事について質問する..." rows="1"></textarea>
+                                <button type="submit" id="ai-send-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stars" viewBox="0 0 16 16"><path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div id="article" class="content"><div id="article-body"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings modal removed -->
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // =================================================================
+            // ★★★ 設定箇所 ★★★
+            // ここに、あなたのデプロイしたCloudflare WorkerのURLを入力してください。
+            // =================================================================
+            const WORKER_URL = 'YOUR_CLOUDFLARE_WORKER_URL_HERE';
+
+
+            // DOM Elements
+            const body = document.body;
+            const mainPage = document.getElementById('main-page');
+            const articlePage = document.getElementById('article-page');
+            const searchFormMain = document.getElementById('search-form-main');
+            const searchBoxMain = document.getElementById('search-box-main');
+            const suggestionsBoxMain = document.getElementById('suggestions-box-main');
+            const searchFormHeader = document.getElementById('search-form-header');
+            const searchBoxHeader = document.getElementById('search-box-header');
+            const suggestionsBoxHeader = document.getElementById('suggestions-box-header');
+            const homeBtn = document.querySelector('.site-title-btn');
+            const articleTitleMain = document.getElementById('article-title-main');
+            const aiSummaryContent = document.getElementById('ai-summary-content');
+            const articleBody = document.getElementById('article-body');
+            const tocList = document.getElementById('toc-list');
+            const tocContainer = document.getElementById('toc-container');
+            const tocToggleBtn = document.getElementById('toc-toggle-btn');
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.content');
+            const aiInputForm = document.getElementById('ai-input-form');
+            const aiInput = document.getElementById('ai-input');
+            const chatContainer = document.querySelector('.chat-container');
+
+            // State
+            let conversationHistory = [];
+            let currentArticleText = '';
+
+            const loadingSpinnerHTML = `<svg class="loading-spinner" viewBox="0 0 50 50"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="3"></circle></svg>`;
+
+            function showMainPage() {
+                body.classList.remove('article-view');
+                articlePage.style.display = 'none';
+                mainPage.style.display = 'flex';
+            }
+            homeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                showMainPage();
+            });
+
+            const handleSearch = (query) => {
+                if (query) {
+                    fetchWikipediaArticle(query);
+                    suggestionsBoxMain.style.display = 'none';
+                    suggestionsBoxHeader.style.display = 'none';
+                }
+            };
+            
+            searchFormMain.addEventListener('submit', (e) => { e.preventDefault(); handleSearch(searchBoxMain.value.trim()); });
+            searchFormHeader.addEventListener('submit', (e) => { e.preventDefault(); handleSearch(searchBoxHeader.value.trim()); });
+
+            const handleSuggestions = async (query, suggestionsBox) => {
+                 if (query.length > 1) {
+                    const url = `https://ja.wikipedia.org/w/api.php?action=opensearch&format=json&search=${encodeURIComponent(query)}&origin=*`;
+                    try {
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        displaySuggestions(data[1], suggestionsBox);
+                    } catch (error) { console.error('Suggestion fetch error:', error); }
+                } else {
+                    suggestionsBox.style.display = 'none';
+                }
+            };
+
+            searchBoxMain.addEventListener('input', () => handleSuggestions(searchBoxMain.value.trim(), suggestionsBoxMain));
+            searchBoxHeader.addEventListener('input', () => handleSuggestions(searchBoxHeader.value.trim(), suggestionsBoxHeader));
+            
+            function displaySuggestions(suggestions, box) {
+                box.innerHTML = '';
+                if (suggestions.length > 0) {
+                    suggestions.forEach(suggestion => {
+                        const li = document.createElement('li');
+                        li.textContent = suggestion;
+                        li.addEventListener('click', () => {
+                            searchBoxMain.value = suggestion;
+                            searchBoxHeader.value = suggestion;
+                            handleSearch(suggestion);
+                        });
+                        box.appendChild(li);
+                    });
+                    box.style.display = 'block';
+                } else {
+                    box.style.display = 'none';
+                }
+            }
+            
+            document.addEventListener('click', (e) => {
+                if (e.target !== searchBoxMain) suggestionsBoxMain.style.display = 'none';
+                if (e.target !== searchBoxHeader) suggestionsBoxHeader.style.display = 'none';
+            });
+
+            async function fetchWikipediaArticle(title) {
+                try {
+                    const url = `https://ja.wikipedia.org/w/api.php?action=parse&format=json&page=${encodeURIComponent(title)}&prop=text|sections&origin=*`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error.info);
+                    if (!data.parse) throw new Error('記事のコンテンツを取得できませんでした。');
+
+                    displayArticle(data.parse);
+                    body.classList.add('article-view');
+                    mainPage.style.display = 'none';
+                    articlePage.style.display = 'flex';
+                } catch (error) {
+                    console.error('Article fetch error:', error);
+                    alert(`記事の読み込み中にエラーが発生しました: ${error.message}`);
+                }
+            }
+            
+            function displayArticle(data) {
+                articleTitleMain.textContent = data.title;
+                searchBoxHeader.value = data.title;
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.text['*'];
+                tempDiv.querySelectorAll('img, video, .thumb, .infobox, .mw-editsection, style').forEach(el => el.remove());
+                articleBody.innerHTML = tempDiv.innerHTML;
+                
+                currentArticleText = tempDiv.textContent;
+                generateToc(data.sections);
+                resetAiMode(data.title);
+                generateAiSummary(data.title, currentArticleText);
+            }
+
+            function generateToc(sections) {
+                tocList.innerHTML = '';
+                sections.forEach(section => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = `#${section.anchor}`;
+                    a.textContent = section.line;
+                    a.style.paddingLeft = `${(parseInt(section.level, 10) - 1) * 1}rem`;
+                    li.appendChild(a);
+                    tocList.appendChild(li);
+                });
+                tocList.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const targetId = link.getAttribute('href').substring(1);
+                        const targetElement = document.getElementById(targetId);
+                        if(targetElement) document.querySelector('.content-container').scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
+                    });
+                });
+            }
+            tocToggleBtn.addEventListener('click', () => tocContainer.classList.toggle('hidden'));
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    contents.forEach(content => content.classList.toggle('active', content.id === tab.dataset.target));
+                });
+            });
+
+            async function callGeminiApi(prompt, isSummary = false) {
+                 if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
+                    alert('Cloudflare WorkerのURLが設定されていません。コードを編集してください。');
+                    return null;
+                }
+                const contentsForApi = isSummary 
+                    ? [{ role: "user", parts: [{ text: prompt }] }] 
+                    : conversationHistory.concat([{ role: "user", parts: [{ text: prompt }] }]);
+                try {
+                    const response = await fetch(WORKER_URL, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ contents: contentsForApi }) 
+                    });
+                    if (!response.ok) { 
+                        const errorData = await response.json(); 
+                        throw new Error(`Worker Error: ${response.status} - ${errorData.error || '不明なエラー'}`); 
+                    }
+                    const data = await response.json();
+                    if (!data.candidates || data.candidates.length === 0) throw new Error('APIから有効な応答が返されませんでした。');
+                    const aiResponse = data.candidates[0].content.parts[0].text;
+                    if (!isSummary) {
+                        conversationHistory.push({ role: "user", parts: [{ text: prompt }] });
+                        conversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+                    }
+                    return aiResponse;
+                } catch (error) { 
+                    console.error('API/Worker call error:', error); 
+                    alert(`AIの応答取得中にエラーが発生しました: ${error.message}`); 
+                    return null; 
+                }
+            }
+
+            async function generateAiSummary(title, text) {
+                aiSummaryContent.innerHTML = loadingSpinnerHTML;
+                const prompt = `以下のWikipedia記事「${title}」の本文を、日本語で3〜4文で簡潔に要約してください。\n\n---\n${text.substring(0, 4000)}\n---`;
+                const summary = await callGeminiApi(prompt, true);
+                aiSummaryContent.innerHTML = summary ? summary.replace(/\n/g, '<br>') : '概要の生成に失敗しました。';
+            }
+            
+            function resetAiMode(title) {
+                chatContainer.innerHTML = '';
+                const systemPrompt = `あなたはWikipediaの記事「${title}」に関する質問に答える専門のアシスタントです。記事の内容を元に、親切かつ正確に回答してください。`;
+                conversationHistory = [{ role: "user", parts: [{ text: systemPrompt }] }, {role: "model", parts: [{text: `承知いたしました。Wikipediaの記事「${title}」について、何でもご質問ください。`}]}];
+                appendMessage(`「${title}」について、どんなことでも質問してください。`, 'ai');
+            }
+
+            aiInputForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userInput = aiInput.value.trim();
+                if (!userInput) return;
+                appendMessage(userInput, 'user');
+                aiInput.value = '';
+                aiInput.style.height = 'auto';
+
+                const loadingMessage = appendMessage(loadingSpinnerHTML, 'ai');
+                
+                const aiResponse = await callGeminiApi(userInput);
+                if (aiResponse) {
+                    loadingMessage.innerHTML = aiResponse.replace(/\n/g, '<br>');
+                } else {
+                    loadingMessage.textContent = '申し訳ありません、応答を取得できませんでした。';
+                }
+            });
+
+            function appendMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('chat-message', `${sender}-message`);
+                messageDiv.innerHTML = text;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                return messageDiv;
+            }
+            
+            aiInput.addEventListener('input', () => { aiInput.style.height = 'auto'; aiInput.style.height = (aiInput.scrollHeight) + 'px'; });
+        });
+    </script>
+</body>
+</html>
