@@ -477,16 +477,12 @@
         </div>
     </div>
     
-    <!-- Settings modal removed -->
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // =================================================================
             // ★★★ 設定箇所 ★★★
-            // ここに、あなたのデプロイしたCloudflare WorkerのURLを入力してください。
             // =================================================================
             const WORKER_URL = 'https://math-solver-proxy.nden14800.workers.dev';
-
 
             // DOM Elements
             const body = document.body;
@@ -512,8 +508,8 @@
             const chatContainer = document.querySelector('.chat-container');
 
             // State
-            let conversationHistory = [];
             let currentArticleText = '';
+            let currentArticleTitle = '';
 
             const loadingSpinnerHTML = `<svg class="loading-spinner" viewBox="0 0 50 50"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="3"></circle></svg>`;
 
@@ -598,8 +594,9 @@
             }
             
             function displayArticle(data) {
-                articleTitleMain.textContent = data.title;
-                searchBoxHeader.value = data.title;
+                currentArticleTitle = data.title;
+                articleTitleMain.textContent = currentArticleTitle;
+                searchBoxHeader.value = currentArticleTitle;
                 
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = data.text['*'];
@@ -608,7 +605,6 @@
                 
                 currentArticleText = tempDiv.textContent || '';
                 
-                // 【修正点】タブの状態をリセットし、「記事」タブをアクティブにする
                 tabs.forEach(tab => {
                     const isArticleTab = tab.dataset.target === 'article';
                     tab.classList.toggle('active', isArticleTab);
@@ -619,11 +615,10 @@
                 });
 
                 generateToc(data.sections);
-                resetAiMode(data.title);
+                resetAiMode(currentArticleTitle);
 
-                // 【修正点】テキストが正常に取得できた場合のみ、AIの概要生成を実行する
                 if (currentArticleText.trim()) {
-                    generateAiSummary(data.title, currentArticleText);
+                    generateAiSummary(currentArticleTitle, currentArticleText);
                 } else {
                     aiSummaryContent.innerHTML = '記事からテキストが抽出できなかったため、概要を生成できませんでした。';
                     console.warn('Could not extract text content from the article to generate summary.');
@@ -660,37 +655,32 @@
                 });
             });
 
-            async function callGeminiApi(isSummary = false, summaryPrompt = '') {
+            // 【修正点】API呼び出し関数を、{ prompt: "..." } 形式で送信するように変更
+            async function callApi(prompt) {
                  if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
                     alert('Cloudflare WorkerのURLが設定されていません。コードを編集してください。');
                     return null;
                 }
-                const contentsForApi = isSummary 
-                    ? [{ role: "user", parts: [{ text: summaryPrompt }] }] 
-                    : conversationHistory;
                 try {
                     const response = await fetch(WORKER_URL, { 
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify({ contents: contentsForApi }) 
+                        body: JSON.stringify({ prompt: prompt }) 
                     });
-                    if (!response.ok) { 
-                        let errorText = await response.text();
-                        try {
-                            const errorData = JSON.parse(errorText);
-                            throw new Error(`Worker Error: ${response.status} - ${errorData.error || errorText}`); 
-                        } catch (e) {
-                             throw new Error(`Worker Error: ${response.status} - ${errorText}`);
-                        }
-                    }
-                    const data = await response.json();
-                    if (!data.candidates || data.candidates.length === 0) throw new Error('APIから有効な応答が返されませんでした。');
-                    const aiResponse = data.candidates[0].content.parts[0].text;
                     
-                    if (!isSummary) {
-                        conversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || `サーバーエラー: ${response.status}`);
                     }
-                    return aiResponse;
+                    
+                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (text) {
+                        return text;
+                    } else {
+                        throw new Error('AIが有効な回答を生成できませんでした。');
+                    }
                 } catch (error) { 
                     console.error('API/Worker call error:', error); 
                     alert(`AIの応答取得中にエラーが発生しました: ${error.message}`); 
@@ -701,17 +691,12 @@
             async function generateAiSummary(title, text) {
                 aiSummaryContent.innerHTML = loadingSpinnerHTML;
                 const prompt = `以下のWikipedia記事「${title}」の本文を、日本語で3〜4文で簡潔に要約してください。\n\n---\n${text.substring(0, 4000)}\n---`;
-                const summary = await callGeminiApi(true, prompt);
+                const summary = await callApi(prompt);
                 aiSummaryContent.innerHTML = summary ? summary.replace(/\n/g, '<br>') : '概要の生成に失敗しました。';
             }
             
             function resetAiMode(title) {
                 chatContainer.innerHTML = '';
-                const systemPrompt = `あなたはWikipediaの記事「${title}」に関する質問に答える専門のアシスタントです。記事の内容を元に、親切かつ正確に回答してください。`;
-                conversationHistory = [
-                    { role: "user", parts: [{ text: systemPrompt }] }, 
-                    { role: "model", parts: [{text: `承知いたしました。Wikipediaの記事「${title}」について、何でもご質問ください。`}]}
-                ];
                 appendMessage(`「${title}」について、どんなことでも質問してください。`, 'ai');
             }
 
@@ -724,18 +709,17 @@
                 aiInput.value = '';
                 aiInput.style.height = 'auto';
 
-                conversationHistory.push({ role: "user", parts: [{ text: userInput }] });
-
                 const loadingMessage = appendMessage(loadingSpinnerHTML, 'ai');
                 
-                const aiResponse = await callGeminiApi();
+                // 【修正点】AIに渡すプロンプトを毎回生成する
+                const chatPrompt = `あなたはWikipediaの記事「${currentArticleTitle}」に関する質問に答える専門のアシスタントです。以下の記事本文を参考に、ユーザーの質問に親切かつ正確に回答してください。\n\n--- 記事本文 (4000文字まで) ---\n${currentArticleText.substring(0, 4000)}\n---\n\nユーザーの質問: ${userInput}`;
+
+                const aiResponse = await callApi(chatPrompt);
                 
                 if (aiResponse) {
                     loadingMessage.innerHTML = aiResponse.replace(/\n/g, '<br>');
                 } else {
                     loadingMessage.textContent = '申し訳ありません、応答を取得できませんでした。';
-                    // 失敗した場合、事前に追加したユーザーメッセージを履歴から削除
-                    conversationHistory.pop(); 
                 }
             });
 
