@@ -484,6 +484,7 @@
             // =================================================================
             // ★★★ 設定箇所 ★★★
             // ここに、あなたのデプロイしたCloudflare WorkerのURLを入力してください。
+            // ※注意: Worker側でCORS設定（どのウェブサイトからのアクセスを許可するか）が正しく行われている必要があります。
             // =================================================================
             const WORKER_URL = 'https://math-solver-proxy.nden14800.workers.dev';
 
@@ -603,7 +604,7 @@
                 
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = data.text['*'];
-                tempDiv.querySelectorAll('img, video, .thumb, .infobox, .mw-editsection, style').forEach(el => el.remove());
+                tempDiv.querySelectorAll('img, video, .thumb, .infobox, .mw-editsection, style, link').forEach(el => el.remove());
                 articleBody.innerHTML = tempDiv.innerHTML;
                 
                 currentArticleText = tempDiv.textContent;
@@ -642,34 +643,14 @@
                 });
             });
 
-            async function callGeminiApi(prompt, isSummary = false) {
-                 if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
+            async function callGeminiApi(isSummary = false, summaryPrompt = '') {
+                 if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE') { // This check remains the same
                     alert('Cloudflare WorkerのURLが設定されていません。コードを編集してください。');
                     return null;
                 }
-
-                let contentsForApi;
-                let userMessageForHistory;
-
-                if (isSummary) {
-                    contentsForApi = [{ role: "user", parts: [{ text: prompt }] }];
-                } else {
-                    let finalUserPrompt = prompt;
-                    // もし会話履歴が空なら、それは会話の最初のターン
-                    if (conversationHistory.length === 0) {
-                        const title = articleTitleMain.textContent;
-                        const systemPrompt = `あなたはWikipediaの記事「${title}」に関する質問に答える専門のアシスタントです。記事の内容を元に、親切かつ正確に回答してください。`;
-                        // システムプロンプトとユーザーの最初の質問を結合
-                        finalUserPrompt = `${systemPrompt}\n\n---\n\n質問: ${prompt}`;
-                    }
-                    
-                    const userMessageForApi = { role: "user", parts: [{ text: finalUserPrompt }] };
-                    contentsForApi = conversationHistory.concat([userMessageForApi]);
-                    
-                    // 履歴に保存するのは、結合前の元のユーザー入力
-                    userMessageForHistory = { role: "user", parts: [{ text: prompt }] };
-                }
-
+                const contentsForApi = isSummary 
+                    ? [{ role: "user", parts: [{ text: summaryPrompt }] }] 
+                    : conversationHistory;
                 try {
                     const response = await fetch(WORKER_URL, { 
                         method: 'POST', 
@@ -677,16 +658,19 @@
                         body: JSON.stringify({ contents: contentsForApi }) 
                     });
                     if (!response.ok) { 
-                        const errorData = await response.json(); 
-                        throw new Error(`Worker Error: ${response.status} - ${errorData.error || '不明なエラー'}`); 
+                        let errorText = await response.text();
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            throw new Error(`Worker Error: ${response.status} - ${errorData.error || errorText}`); 
+                        } catch (e) {
+                             throw new Error(`Worker Error: ${response.status} - ${errorText}`);
+                        }
                     }
                     const data = await response.json();
                     if (!data.candidates || data.candidates.length === 0) throw new Error('APIから有効な応答が返されませんでした。');
                     const aiResponse = data.candidates[0].content.parts[0].text;
                     
                     if (!isSummary) {
-                        // 実際の会話履歴には、元の質問とAIの応答を追加
-                        conversationHistory.push(userMessageForHistory);
                         conversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
                     }
                     return aiResponse;
@@ -700,14 +684,17 @@
             async function generateAiSummary(title, text) {
                 aiSummaryContent.innerHTML = loadingSpinnerHTML;
                 const prompt = `以下のWikipedia記事「${title}」の本文を、日本語で3〜4文で簡潔に要約してください。\n\n---\n${text.substring(0, 4000)}\n---`;
-                const summary = await callGeminiApi(prompt, true);
+                const summary = await callGeminiApi(true, prompt);
                 aiSummaryContent.innerHTML = summary ? summary.replace(/\n/g, '<br>') : '概要の生成に失敗しました。';
             }
             
             function resetAiMode(title) {
                 chatContainer.innerHTML = '';
-                // 会話履歴を完全に空にする
-                conversationHistory = [];
+                const systemPrompt = `あなたはWikipediaの記事「${title}」に関する質問に答える専門のアシスタントです。記事の内容を元に、親切かつ正確に回答してください。`;
+                conversationHistory = [
+                    { role: "user", parts: [{ text: systemPrompt }] }, 
+                    { role: "model", parts: [{text: `承知いたしました。Wikipediaの記事「${title}」について、何でもご質問ください。`}]}
+                ];
                 appendMessage(`「${title}」について、どんなことでも質問してください。`, 'ai');
             }
 
@@ -715,18 +702,23 @@
                 e.preventDefault();
                 const userInput = aiInput.value.trim();
                 if (!userInput) return;
+                
                 appendMessage(userInput, 'user');
                 aiInput.value = '';
                 aiInput.style.height = 'auto';
 
+                conversationHistory.push({ role: "user", parts: [{ text: userInput }] });
+
                 const loadingMessage = appendMessage(loadingSpinnerHTML, 'ai');
                 
-                // ユーザーの入力をそのまま渡す
-                const aiResponse = await callGeminiApi(userInput);
+                const aiResponse = await callGeminiApi();
+                
                 if (aiResponse) {
                     loadingMessage.innerHTML = aiResponse.replace(/\n/g, '<br>');
                 } else {
                     loadingMessage.textContent = '申し訳ありません、応答を取得できませんでした。';
+                    // On failure, remove the user message that was optimistically added
+                    conversationHistory.pop(); 
                 }
             });
 
