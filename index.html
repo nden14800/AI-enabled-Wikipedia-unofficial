@@ -434,8 +434,8 @@
         <div id="article-page">
             <div class="article-sub-header">
                 <nav class="tabs">
-                    <button class="tab active" data-target="ai-mode">AI モード</button>
-                    <button class="tab" data-target="article">記事</button>
+                    <button class="tab" data-target="ai-mode">AI モード</button>
+                    <button class="tab active" data-target="article">記事</button>
                 </nav>
                 <div class="article-actions">
                      <button class="action-btn" id="toc-toggle-btn">
@@ -459,7 +459,7 @@
                         </div>
                         <div id="ai-summary-content"></div>
                     </div>
-                    <div id="ai-mode" class="content active">
+                    <div id="ai-mode" class="content">
                         <div id="ai-mode-content">
                             <div class="chat-container"></div>
                             <div class="ai-disclaimer">AI の回答には間違いが含まれている場合があります。</div>
@@ -471,7 +471,7 @@
                             </form>
                         </div>
                     </div>
-                    <div id="article" class="content"><div id="article-body"></div></div>
+                    <div id="article" class="content active"><div id="article-body"></div></div>
                 </div>
             </div>
         </div>
@@ -484,7 +484,6 @@
             // =================================================================
             // ★★★ 設定箇所 ★★★
             // ここに、あなたのデプロイしたCloudflare WorkerのURLを入力してください。
-            // ※注意: Worker側でCORS設定（どのウェブサイトからのアクセスを許可するか）が正しく行われている必要があります。
             // =================================================================
             const WORKER_URL = 'https://math-solver-proxy.nden14800.workers.dev';
 
@@ -607,10 +606,28 @@
                 tempDiv.querySelectorAll('img, video, .thumb, .infobox, .mw-editsection, style, link').forEach(el => el.remove());
                 articleBody.innerHTML = tempDiv.innerHTML;
                 
-                currentArticleText = tempDiv.textContent;
+                currentArticleText = tempDiv.textContent || '';
+                
+                // 【修正点】タブの状態をリセットし、「記事」タブをアクティブにする
+                tabs.forEach(tab => {
+                    const isArticleTab = tab.dataset.target === 'article';
+                    tab.classList.toggle('active', isArticleTab);
+                });
+                contents.forEach(content => {
+                    const isArticleContent = content.id === 'article';
+                    content.classList.toggle('active', isArticleContent);
+                });
+
                 generateToc(data.sections);
                 resetAiMode(data.title);
-                generateAiSummary(data.title, currentArticleText);
+
+                // 【修正点】テキストが正常に取得できた場合のみ、AIの概要生成を実行する
+                if (currentArticleText.trim()) {
+                    generateAiSummary(data.title, currentArticleText);
+                } else {
+                    aiSummaryContent.innerHTML = '記事からテキストが抽出できなかったため、概要を生成できませんでした。';
+                    console.warn('Could not extract text content from the article to generate summary.');
+                }
             }
 
             function generateToc(sections) {
@@ -644,7 +661,7 @@
             });
 
             async function callGeminiApi(isSummary = false, summaryPrompt = '') {
-                 if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE') { // This check remains the same
+                 if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
                     alert('Cloudflare WorkerのURLが設定されていません。コードを編集してください。');
                     return null;
                 }
@@ -717,7 +734,7 @@
                     loadingMessage.innerHTML = aiResponse.replace(/\n/g, '<br>');
                 } else {
                     loadingMessage.textContent = '申し訳ありません、応答を取得できませんでした。';
-                    // On failure, remove the user message that was optimistically added
+                    // 失敗した場合、事前に追加したユーザーメッセージを履歴から削除
                     conversationHistory.pop(); 
                 }
             });
