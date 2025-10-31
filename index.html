@@ -368,6 +368,39 @@
             border-bottom: 1px solid var(--border-color);
         }
         #article-body a { color: var(--primary-color); }
+        
+        /* Wikipedia Template Styles */
+        #article-body .infobox {
+            border: 1px solid var(--border-color);
+            background-color: var(--toc-bg);
+            padding: 0.5rem;
+            margin: 0.5rem 0 0.5rem 1rem;
+            float: right;
+            clear: right;
+            width: 300px;
+            font-size: 0.9em;
+        }
+        #article-body .infobox th, #article-body .infobox td {
+            padding: 0.3rem;
+            text-align: left;
+        }
+        #article-body .infobox th {
+            font-weight: 500;
+        }
+        #article-body table.wikitable {
+            border: 1px solid var(--border-color);
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        #article-body table.wikitable > * > tr > th, #article-body table.wikitable > * > tr > td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+        }
+        #article-body table.wikitable > * > tr > th {
+            background-color: var(--search-bg-color);
+            font-weight: 500;
+        }
+
 
         /* --- AI Mode --- */
         #ai-mode-content { height: 100%; display: flex; flex-direction: column; }
@@ -468,6 +501,13 @@
                           <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"/>
                         </svg>
                     </a>
+                    <!-- ★★★ 追加したボタン ★★★ -->
+                    <a href="#" id="template-link" class="action-btn" title="テンプレートを表示" target="_blank" rel="noopener noreferrer" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-code" viewBox="0 0 16 16">
+                            <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                            <path d="M8.646 6.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L10.293 9 8.646 7.354a.5.5 0 0 1 0-.708m-1.292 0a.5.5 0 0 0-.708 0l-2 2a.5.5 0 0 0 0 .708l2 2a.5.5 0 0 0 .708-.708L5.707 9l1.647-1.646a.5.5 0 0 0 0-.708"/>
+                        </svg>
+                    </a>
                     <button class="action-btn" id="toc-toggle-btn" title="目次">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-list" viewBox="0 0 16 16">
                           <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
@@ -539,6 +579,8 @@
             const viewLink = document.getElementById('view-link');
             const editLink = document.getElementById('edit-link');
             const historyLink = document.getElementById('history-link');
+            // ★★★ 追加したボタンの要素を取得 ★★★
+            const templateLink = document.getElementById('template-link');
             
             let currentArticleText = '';
             let currentArticleTitle = '';
@@ -638,8 +680,27 @@
                 
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = data.text['*'];
-                tempDiv.querySelectorAll('img, video, .thumb, .infobox, .mw-editsection, style, link').forEach(el => el.remove());
+                
+                tempDiv.querySelectorAll('img, video, .thumb, .mw-editsection, style, link').forEach(el => el.remove());
+                
                 articleBody.innerHTML = tempDiv.innerHTML;
+
+                // ★★★ ここからテンプレートボタンの表示ロジック ★★★
+                // まず、ボタンを非表示にする
+                templateLink.style.display = 'none';
+
+                // 記事のHTML内からinfobox内のテンプレートへのリンクを探す
+                const infoboxTemplateA = articleBody.querySelector('.infobox a[href^="/wiki/Template:"]');
+                
+                if (infoboxTemplateA) {
+                    const href = infoboxTemplateA.getAttribute('href');
+                    if (href) {
+                        // リンクが見つかった場合、完全なURLを生成してボタンのhrefに設定し、表示する
+                        templateLink.href = `https://ja.wikipedia.org${href}`;
+                        templateLink.style.display = 'flex';
+                    }
+                }
+                // ★★★ ここまでテンプレートボタンの表示ロジック ★★★
                 
                 currentArticleText = tempDiv.textContent || '';
                 
