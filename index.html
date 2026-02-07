@@ -6,597 +6,558 @@
     <title>AI機能付きWikipedia(非公式)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS Reset */
+        /* --- CSS Reset & Variables --- */
         *, *::before, *::after {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
-        /* Color Variables */
         :root {
-            --bg-color: #ffffff;
-            --text-color: #202124;
-            --secondary-text-color: #5f6368;
-            --primary-color: #1a73e8;
-            --border-color: #dadce0;
-            --search-bg-color: #f1f3f4;
-            --search-bg-hover-color: #e8eaed;
-            --shadow-color: rgba(0, 0, 0, 0.1);
-            --active-tab-border: #1a73e8;
-            --toc-bg: #f8f9fa;
-            --header-bg-color: rgba(255, 255, 255, 0.95);
-            --spinner-color: #1a73e8;
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            
+            /* Theme Palette */
+            --bg-body: #f8fafc;
+            --bg-glass: rgba(255, 255, 255, 0.85);
+            --bg-surface: #ffffff;
+            --bg-subtle: #f1f5f9;
+            
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-light: #e0e7ff;
+            
+            --accent-learning: #10b981; /* Emerald for Learning */
+            --accent-ai: #8b5cf6; /* Violet for AI */
+
+            --border-subtle: #e2e8f0;
+            
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --shadow-panel: -5px 0 25px rgba(0,0,0,0.05);
+
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+            
+            --header-height: 70px;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg-color: #202124;
-                --text-color: #e8eaed;
-                --secondary-text-color: #9aa0a6;
-                --primary-color: #8ab4f8;
-                --border-color: #3c4043;
-                --search-bg-color: #303134;
-                --search-bg-hover-color: #3c4043;
-                --shadow-color: rgba(0, 0, 0, 0.3);
-                --active-tab-border: #8ab4f8;
-                --toc-bg: #292a2d;
-                --header-bg-color: rgba(32, 33, 36, 0.95);
-                --spinner-color: #8ab4f8;
+                --bg-body: #020617;
+                --bg-glass: rgba(15, 23, 42, 0.85);
+                --bg-surface: #1e293b;
+                --bg-subtle: #334155;
+                
+                --text-main: #f8fafc;
+                --text-muted: #94a3b8;
+                --text-light: #64748b;
+                
+                --primary: #6366f1;
+                --primary-hover: #818cf8;
+                --primary-light: #1e1b4b;
+                
+                --border-subtle: #1e293b;
             }
         }
 
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            transition: background-color 0.3s, color 0.3s;
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--text-main);
             line-height: 1.6;
-        }
-
-        input, textarea {
-            font-family: 'Roboto', sans-serif;
-        }
-
-        .container {
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        /* --- Global Header --- */
+        a { text-decoration: none; color: inherit; transition: color 0.2s; }
+        input, textarea, button { font-family: inherit; outline: none; }
+        ul { list-style: none; }
+
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+        /* --- Header --- */
         .global-header {
+            position: sticky;
+            top: 0;
+            height: var(--header-height);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.75rem 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            background-color: var(--header-bg-color);
-            backdrop-filter: blur(8px);
+            padding: 0 2rem;
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-subtle);
             z-index: 1000;
         }
         
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-shrink: 0;
-        }
-        
-        .site-title-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
+        .site-brand {
+            font-weight: 800;
             font-size: 1.2rem;
-            font-weight: 500;
-            color: var(--text-color);
-            text-decoration: none;
-            padding: 0.5rem 0;
-        }
-
-        .header-center {
-            flex-grow: 1;
-            max-width: 720px;
-            margin: 0 1rem;
-        }
-        
-        .header-right {
-             flex-shrink: 0;
-        }
-
-        /* Common Search Container styles */
-        .search-container {
-            position: relative;
-            width: 100%;
-        }
-
-        .search-container form {
-            display: flex;
-        }
-
-        .search-container input[type="text"] {
-            width: 100%;
-            padding: 0.7rem 1.5rem 0.7rem 3rem;
-            font-size: 1rem;
-            border-radius: 24px;
-            border: 1px solid var(--border-color);
-            background-color: var(--search-bg-color);
-            color: var(--text-color);
-            outline: none;
-        }
-        
-        .search-container input[type="text"]:hover,
-        .search-container input[type="text"]:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 1px 6px var(--shadow-color);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--secondary-text-color);
-            pointer-events: none;
-        }
-        .search-icon svg {
-            width: 20px;
-            height: 20px;
-        }
-        
-        .suggestions-box {
-            position: absolute;
-            width: 100%;
-            list-style: none;
-            text-align: left;
-            margin-top: 4px;
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: 0 2px 6px var(--shadow-color);
-            display: none;
-            z-index: 1001;
-        }
-        .suggestions-box li {
-            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.03em;
             cursor: pointer;
         }
-        .suggestions-box li:hover {
-            background-color: var(--search-bg-hover-color);
-        }
 
-        /* --- Main Page --- */
-        #main-page {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex-grow: 1;
-            padding: 2rem;
-        }
+        .header-center { flex: 1; max-width: 500px; margin: 0 2rem; }
         
-        .main-content {
+        /* Search Bar */
+        .search-container { position: relative; width: 100%; }
+        .search-input-wrapper { position: relative; display: flex; align-items: center; }
+        .search-icon { position: absolute; left: 1rem; color: var(--text-muted); pointer-events: none; width: 16px; height: 16px; }
+        
+        input[type="text"] {
             width: 100%;
-            max-width: 600px;
-            text-align: center;
+            padding: 0.6rem 1rem 0.6rem 2.8rem;
+            font-size: 0.9rem;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-surface);
+            color: var(--text-main);
+            transition: all 0.2s ease;
         }
+        input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
 
-        .main-content h1 {
-            font-size: 2.5rem;
-            font-weight: 500;
-            margin-bottom: 2rem;
-        }
+        .header-actions { display: flex; gap: 0.8rem; align-items: center; }
 
-        /* --- Article Page --- */
-        #article-page {
-            display: none;
-            flex-direction: column;
-            height: calc(100vh - 61px);
-        }
-        
-        .article-sub-header {
-            padding: 0 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            flex-shrink: 0;
-            background-color: var(--bg-color);
-        }
-
-        .tabs {
-            display: flex;
-            gap: 1.5rem;
-        }
-
-        .tab {
-            padding: 0.8rem 0;
-            cursor: pointer;
-            border: none;
-            background: none;
-            color: var(--secondary-text-color);
-            font-size: 1rem;
-            position: relative;
-            text-decoration: none;
-        }
-        .tab.active {
-            color: var(--primary-color);
-        }
-
-        .tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background-color: var(--active-tab-border);
-            border-radius: 3px;
-        }
-        
-        .article-actions {
-            margin-left: auto;
+        /* Header Buttons */
+        .btn-feature {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
         }
         
-        .action-btn {
-            background: none;
+        .btn-ai { color: var(--accent-ai); background: rgba(139, 92, 246, 0.1); }
+        .btn-ai:hover, .btn-ai.active { background: var(--accent-ai); color: white; }
+        
+        .btn-learn { color: var(--accent-learning); background: rgba(16, 185, 129, 0.1); }
+        .btn-learn:hover, .btn-learn.active { background: var(--accent-learning); color: white; }
+
+        .btn-wiki {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            background: var(--bg-subtle);
+            color: var(--text-main);
+            font-size: 0.85rem;
+            font-weight: 500;
             border: none;
             cursor: pointer;
-            color: var(--secondary-text-color);
-            padding: 0.5rem;
-            border-radius: 50%;
+        }
+        .btn-wiki:hover { background: var(--border-subtle); }
+
+        .btn-icon-only {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-icon-only:hover { color: var(--text-main); border-color: var(--text-muted); }
+
+        /* --- Side Panels (Cards) --- */
+        .side-panel {
+            position: fixed;
+            top: var(--header-height);
+            right: 0;
+            width: 400px;
+            height: calc(100vh - var(--header-height));
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-panel);
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1050;
             display: flex;
+            flex-direction: column;
+        }
+        .side-panel.open { transform: translateX(0); }
+        
+        @media (max-width: 768px) { .side-panel { width: 100%; } }
+
+        .panel-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-title { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+        .panel-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+        .close-panel-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); }
+        .close-panel-btn:hover { color: var(--text-main); }
+
+        .panel-content { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; }
+
+        /* --- Main Page (Hero) --- */
+        #main-page {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            position: relative;
+            padding: 2rem;
         }
-        .action-btn:hover {
-            background-color: var(--search-bg-hover-color);
-            color: var(--text-color);
-        }
-        .action-btn svg {
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
-        }
+        .ambient-bg { position: absolute; width: 100%; height: 100%; top: 0; left: 0; overflow: hidden; z-index: -1; pointer-events: none; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.3; }
+        .orb-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, #8b5cf6, #4f46e5); }
+        .orb-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, #10b981, #3b82f6); }
 
-        .article-content-wrapper {
-            display: flex;
-            flex-grow: 1;
-            overflow-y: hidden;
-        }
+        .hero-content { text-align: center; width: 100%; max-width: 720px; animation: fadeIn 0.8s ease-out; }
+        .hero-title { font-size: 3.5rem; font-weight: 800; margin-bottom: 1rem; letter-spacing: -0.04em; background: linear-gradient(to right, var(--text-main), var(--text-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.125rem; color: var(--text-muted); margin-bottom: 3rem; }
+        
+        .search-hero input { padding: 1.25rem 1.5rem 1.25rem 3.5rem; font-size: 1.1rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
+        @media (prefers-color-scheme: dark) { .search-hero input { background: rgba(30, 41, 59, 0.9); border-color: rgba(255,255,255,0.1); } }
 
-        /* --- Table of Contents --- */
+        .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 4rem; text-align: left; }
+        @media (max-width: 768px) { .features { grid-template-columns: 1fr; } }
+        .feature-card { padding: 1.5rem; border-radius: var(--radius-md); background: var(--bg-surface); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm); transition: transform 0.2s; }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+        .f-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+        .f-title { font-weight: 700; margin-bottom: 0.5rem; }
+        .f-desc { font-size: 0.85rem; color: var(--text-muted); }
+
+        /* --- Article View --- */
+        #article-page { display: none; flex-direction: row; flex: 1; position: relative; overflow: hidden; }
+        
         #toc-container {
-            width: 280px;
-            padding: 1.5rem;
-            border-right: 1px solid var(--border-color);
+            width: 260px;
+            padding: 2rem 1rem;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border-subtle);
             overflow-y: auto;
-            background-color: var(--toc-bg);
-            transition: width 0.3s, padding 0.3s, opacity 0.3s;
             flex-shrink: 0;
+            transition: margin-left 0.3s ease;
         }
-        #toc-container.hidden {
-            width: 0;
-            padding: 1.5rem 0;
-            opacity: 0;
-            pointer-events: none;
-        }
+        #toc-container.hidden { margin-left: -260px; }
+        #toc-container h2 { font-size: 0.75rem; text-transform: uppercase; color: var(--text-light); margin-bottom: 1rem; padding-left: 0.5rem; }
+        #toc-list a { display: block; padding: 0.4rem 0.6rem; font-size: 0.85rem; color: var(--text-muted); border-radius: 6px; margin-bottom: 2px; }
+        #toc-list a:hover { background: var(--bg-subtle); color: var(--text-main); }
 
-        #toc-title {
-            font-size: 1.2rem;
-            font-weight: 500;
-            margin-bottom: 1rem;
-        }
-
-        #toc-list { list-style: none; }
-        #toc-list ul { list-style: none; padding-left: 1rem; }
-        #toc-list a {
-            text-decoration: none;
-            color: var(--secondary-text-color);
-            display: block;
-            padding: 0.3rem 0;
-            border-left: 2px solid transparent;
-            padding-left: 0.5rem;
-        }
-        #toc-list a:hover {
-            color: var(--text-color);
-            background-color: var(--search-bg-hover-color);
-        }
-        #toc-list a.active-section {
-            color: var(--primary-color);
-            border-left-color: var(--primary-color);
-        }
-
-        /* --- Article/AI View --- */
-        .content-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 2rem 4rem;
-        }
-
-        .content { display: none; max-width: 800px; margin: 0 auto; }
-        .content.active { display: block; }
-        #article-title-main {
-            font-size: 2.2rem;
-            margin-bottom: 0.5rem; /* Reduced margin */
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 1rem;
-        }
+        .main-scroll-area { flex: 1; overflow-y: auto; padding: 3rem 4rem; scroll-behavior: smooth; }
+        @media(max-width: 1024px) { .main-scroll-area { padding: 2rem; } }
         
-        .source-credit {
-            font-size: 0.85rem;
-            color: var(--secondary-text-color);
-            margin-bottom: 1rem;
-            padding-left: 2px;
-        }
+        .article-content { max-width: 800px; margin: 0 auto; animation: fadeIn 0.5s ease; }
+        #article-title-main { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+        .meta-source { font-size: 0.8rem; color: var(--text-light); margin-bottom: 2rem; }
 
-        #ai-summary {
-            background-color: var(--search-bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 2rem;
+        /* AI Summary Block */
+        #ai-summary { 
+            background: linear-gradient(135deg, rgba(255,255,255,0.5), rgba(240,249,255,0.5)); 
+            border: 1px solid var(--border-subtle); 
+            border-radius: var(--radius-md); 
+            padding: 1.5rem; 
+            margin-bottom: 3rem; 
+            position: relative; 
+            overflow: hidden; 
         }
-
-        #ai-summary-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-weight: 500;
-            margin-bottom: 0.75rem;
-        }
-        #ai-summary-header svg {
-            width: 20px;
-            height: 20px;
-            fill: var(--primary-color);
-        }
-        #ai-summary-content {
-            color: var(--text-color);
-        }
-
-
-        #article-body h2, #article-body h3, #article-body h4 {
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-        #article-body a { color: var(--primary-color); }
+        /* Removed left-side accent border to ensure uniform border thickness and color */
         
-        /* Wikipedia Template Styles */
-        #article-body .infobox {
-            border: 1px solid var(--border-color);
-            background-color: var(--toc-bg);
-            padding: 0.5rem;
-            margin: 0.5rem 0 0.5rem 1rem;
-            float: right;
-            clear: right;
-            width: 300px;
-            font-size: 0.9em;
-        }
-        #article-body .infobox th, #article-body .infobox td {
-            padding: 0.3rem;
-            text-align: left;
-        }
-        #article-body .infobox th {
-            font-weight: 500;
-        }
-        #article-body table.wikitable {
-            border: 1px solid var(--border-color);
-            border-collapse: collapse;
-            margin: 1rem 0;
-        }
-        #article-body table.wikitable > * > tr > th, #article-body table.wikitable > * > tr > td {
-            border: 1px solid var(--border-color);
-            padding: 0.5rem;
-        }
-        #article-body table.wikitable > * > tr > th {
-            background-color: var(--search-bg-color);
-            font-weight: 500;
-        }
+        .ai-label { font-size: 0.75rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.4rem; }
+        #ai-summary-content { font-size: 1rem; line-height: 1.7; }
 
+        /* Article Styling */
+        #article-body { font-size: 1.05rem; line-height: 1.8; }
+        #article-body h2 { font-size: 1.6rem; font-weight: 700; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; }
+        #article-body h3 { font-size: 1.3rem; margin-top: 1.5rem; font-weight: 600; }
+        #article-body p { margin-bottom: 1.2rem; }
+        #article-body a { color: var(--primary); text-decoration: none; }
+        #article-body a:hover { text-decoration: underline; }
+        /* Infobox */
+        #article-body .infobox { float: right; width: 280px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.5rem; font-size: 0.85rem; margin: 0 0 1rem 1rem; border-radius: var(--radius-md); }
+        #article-body .infobox th { text-align: left; color: var(--text-muted); }
 
-        /* --- AI Mode --- */
-        #ai-mode-content { height: 100%; display: flex; flex-direction: column; }
-        .chat-container { flex-grow: 1; overflow-y: auto; padding: 1rem; }
-        .chat-message { max-width: 80%; margin-bottom: 1rem; padding: 0.8rem 1rem; border-radius: 18px; line-height: 1.5; }
-        .user-message { background-color: var(--primary-color); color: var(--bg-color); margin-left: auto; border-bottom-right-radius: 4px; }
-        .ai-message { background-color: var(--search-bg-color); color: var(--text-color); margin-right: auto; border-bottom-left-radius: 4px; }
-        .ai-disclaimer { font-size: 0.8rem; color: var(--secondary-text-color); text-align: center; margin-top: 1rem; padding: 0 1rem; }
-        .ai-input-form { display: flex; padding: 1rem; border-top: 1px solid var(--border-color); }
-        #ai-input { flex-grow: 1; padding: 0.8rem; border-radius: 20px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); outline: none; resize: none; }
-        #ai-send-btn { background: none; border: none; cursor: pointer; color: var(--primary-color); padding: 0.5rem 1rem; display: flex; align-items: center; }
-        #ai-send-btn svg { width: 24px; height: 24px; }
+        /* --- Chat / Quiz UI inside Panels --- */
+        .chat-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; padding-bottom: 1rem; }
+        .chat-message { max-width: 90%; padding: 0.8rem 1rem; border-radius: 1rem; font-size: 0.95rem; line-height: 1.5; }
+        .user-message { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+        .ai-message { align-self: flex-start; background: var(--bg-subtle); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border-subtle); }
+        
+        .panel-input-area { margin-top: auto; position: sticky; bottom: 0; background: var(--bg-surface); padding-top: 1rem; }
+        .input-pill { display: flex; align-items: center; background: var(--bg-subtle); border-radius: 20px; padding: 0.5rem 0.5rem 0.5rem 1rem; border: 1px solid transparent; transition: border 0.2s; }
+        .input-pill:focus-within { border-color: var(--primary); background: var(--bg-surface); }
+        .panel-input { flex: 1; background: transparent; border: none; font-size: 0.95rem; resize: none; max-height: 80px; }
+        .send-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
+        .send-btn:hover { transform: scale(1.1); }
+        .panel-note { font-size: 0.75rem; color: var(--text-light); text-align: center; margin-top: 0.5rem; }
 
-        /* Hide header elements on main page */
+        /* Quiz Specifics */
+        .quiz-content { display: flex; flex-direction: column; gap: 1.5rem; }
+        .quiz-card { background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+        .quiz-btn { width: 100%; padding: 0.8rem; margin-top: 1rem; background: var(--accent-learning); color: white; border: none; border-radius: var(--radius-full); font-weight: 600; cursor: pointer; }
+        .quiz-btn:hover { background: #059669; }
+
+        /* Utilities */
         body:not(.article-view) .global-header { display: none; }
+        .loading-spinner { width: 24px; height: 24px; animation: rotate 1s linear infinite; }
+        .loading-spinner .path { stroke: currentColor; stroke-linecap: round; stroke-dasharray: 90, 150; }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
         
-        /* --- Loading Spinner Styles --- */
-        .loading-spinner {
-            width: 32px;
-            height: 32px;
-            animation: rotate 1s linear infinite;
-            transform-origin: center center;
-        }
-        .loading-spinner .path {
-            stroke: var(--spinner-color);
-            stroke-linecap: round;
-            stroke-dasharray: 89 150;
-            stroke-dashoffset: 0;
-        }
-        @keyframes rotate {
-            100% { transform: rotate(360deg); }
-        }
+        /* Suggestions */
+        .suggestions-box { position: absolute; top: 100%; left: 0; width: 100%; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); margin-top: 0.5rem; display: none; z-index: 2000; overflow: hidden; }
+        .suggestions-box li { padding: 0.7rem 1rem; cursor: pointer; font-size: 0.9rem; }
+        .suggestions-box li:hover { background: var(--bg-subtle); color: var(--primary); }
+
+        /* Footer */
+        .site-footer { margin-top: auto; padding: 2rem; border-top: 1px solid var(--border-subtle); text-align: center; background: var(--bg-surface); }
+        .footer-note { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-subtle); padding: 0.5rem 1rem; border-radius: var(--radius-full); }
 
     </style>
 </head>
 <body>
 
+    <!-- Header (Article View) -->
     <header class="global-header">
-        <div class="header-left">
-            <a href="#" class="site-title-btn">AI機能付きWikipedia(非公式)</a>
-        </div>
+        <div class="site-brand">Wikipedia AI</div>
+        
         <div class="header-center">
             <div class="search-container">
                 <form id="search-form-header">
-                    <div class="search-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                    <div class="search-input-wrapper">
+                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+                        <input type="text" id="search-box-header" placeholder="記事を検索..." autocomplete="off">
                     </div>
-                    <input type="text" id="search-box-header" placeholder="検索" autocomplete="off">
                 </form>
                 <ul id="suggestions-box-header" class="suggestions-box"></ul>
             </div>
         </div>
-        <div class="header-right">
-            <!-- Settings button removed -->
+
+        <div class="header-actions">
+            <!-- Feature Buttons -->
+            <button id="btn-learning-mode" class="btn-feature btn-learn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>
+                学習モード
+            </button>
+            <button id="btn-ai-mode" class="btn-feature btn-ai">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" /></svg>
+                AIアシスタント
+            </button>
+            
+            <div style="width: 1px; height: 24px; background: var(--border-subtle); margin: 0 0.5rem;"></div>
+
+            <!-- Consolidated Action Buttons -->
+            <a href="#" id="wiki-external-link" target="_blank" class="btn-wiki" title="Wikipediaで閲覧・編集">
+                Wikipedia
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+            </a>
+            
+            <button id="toc-toggle-btn" class="btn-icon-only" title="目次">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 17.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>
+            </button>
         </div>
     </header>
 
-    <div class="container">
-        <main id="main-page">
-            <div class="main-content">
-                <h1>AI機能付きWikipedia(非公式)</h1>
-                <div class="search-container">
-                    <form id="search-form-main">
-                         <div class="search-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
-                        </div>
-                        <input type="text" id="search-box-main" placeholder="検索" autocomplete="off">
-                    </form>
-                    <ul id="suggestions-box-main" class="suggestions-box"></ul>
+    <!-- Side Panel: AI Assistant -->
+    <div id="ai-panel" class="side-panel">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">
+                    <svg class="text-accent-ai" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="var(--accent-ai)"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" /></svg>
+                    AIアシスタント
                 </div>
+                <div class="panel-desc">この記事について質問</div>
             </div>
-        </main>
-
-        <div id="article-page">
-            <div class="article-sub-header">
-                <nav class="tabs">
-                    <button class="tab" data-target="ai-mode">AI モード</button>
-                    <button class="tab active" data-target="article">記事</button>
-                    <a href="#" id="note-link" class="tab" target="_blank" rel="noopener noreferrer">ノート</a>
-                </nav>
-                <div class="article-actions">
-                    <a href="#" id="view-link" class="action-btn" title="閲覧" target="_blank" rel="noopener noreferrer">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
-                          <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
-                          <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
-                        </svg>
-                    </a>
-                    <a href="#" id="edit-link" class="action-btn" title="編集" target="_blank" rel="noopener noreferrer">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
-                          <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-                          <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
-                        </svg>
-                    </a>
-                    <a href="#" id="history-link" class="action-btn" title="履歴を表示" target="_blank" rel="noopener noreferrer">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clock-history" viewBox="0 0 16 16">
-                          <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z"/>
-                          <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"/>
-                          <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"/>
-                        </svg>
-                    </a>
-                    <!-- ★★★ 追加したボタン ★★★ -->
-                    <a href="#" id="template-link" class="action-btn" title="テンプレートを表示" target="_blank" rel="noopener noreferrer" style="display: none;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-code" viewBox="0 0 16 16">
-                            <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
-                            <path d="M8.646 6.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L10.293 9 8.646 7.354a.5.5 0 0 1 0-.708m-1.292 0a.5.5 0 0 0-.708 0l-2 2a.5.5 0 0 0 0 .708l2 2a.5.5 0 0 0 .708-.708L5.707 9l1.647-1.646a.5.5 0 0 0 0-.708"/>
-                        </svg>
-                    </a>
-                    <button class="action-btn" id="toc-toggle-btn" title="目次">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-list" viewBox="0 0 16 16">
-                          <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
-                        </svg>
+            <button class="close-panel-btn" data-target="ai-panel"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg></button>
+        </div>
+        <div class="panel-content">
+            <div id="ai-chat-container" class="chat-container">
+                <!-- Chat messages go here -->
+            </div>
+            <form id="ai-input-form" class="panel-input-area">
+                <div class="input-pill">
+                    <textarea id="ai-input" class="panel-input" placeholder="質問を入力..." rows="1"></textarea>
+                    <button type="submit" class="send-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5" /></svg>
                     </button>
                 </div>
+                <p class="panel-note">「<span id="ai-article-name-placeholder"></span>」について何でも質問してください</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Side Panel: Learning Mode -->
+    <div id="learning-panel" class="side-panel">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">
+                    <svg class="text-accent-learning" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="var(--accent-learning)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>
+                    学習モード
+                </div>
+                <div class="panel-desc">クイズで知識をテスト</div>
             </div>
-            <div class="article-content-wrapper">
-                <aside id="toc-container">
-                    <h2 id="toc-title">目次</h2>
-                    <ul id="toc-list"></ul>
-                </aside>
-                <div class="content-container">
-                    <h1 id="article-title-main"></h1>
-                    <p class="source-credit">ウィキペディアから</p>
-                    <div id="ai-summary">
-                        <div id="ai-summary-header">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stars" viewBox="0 0 16 16"><path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/></svg>
-                            <span>AI による概要</span>
-                        </div>
-                        <div id="ai-summary-content"></div>
+            <button class="close-panel-btn" data-target="learning-panel"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg></button>
+        </div>
+        <div class="panel-content">
+            <div id="quiz-container" class="quiz-content">
+                <p style="text-align:center; color: var(--text-muted);">ボタンを押してクイズを開始してください。</p>
+            </div>
+            <button id="btn-generate-quiz" class="quiz-btn">クイズを作成する</button>
+        </div>
+    </div>
+
+
+    <!-- Main Page Hero -->
+    <main id="main-page">
+        <div class="ambient-bg">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+        </div>
+
+        <div class="hero-content">
+            <h1 class="hero-title">Wikipedia AI</h1>
+            <p class="hero-subtitle">世界中の知識を、AIの力でもっと身近に、もっと深く。</p>
+            
+            <div class="search-container search-hero">
+                <form id="search-form-main">
+                    <div class="search-input-wrapper">
+                         <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+                        <input type="text" id="search-box-main" placeholder="何について知りたいですか？" autocomplete="off">
                     </div>
-                    <div id="ai-mode" class="content">
-                        <div id="ai-mode-content">
-                            <div class="chat-container"></div>
-                            <div class="ai-disclaimer">AI の回答には間違いが含まれている場合があります。</div>
-                            <form class="ai-input-form" id="ai-input-form">
-                                <textarea id="ai-input" placeholder="この記事について質問する..." rows="1"></textarea>
-                                <button type="submit" id="ai-send-btn">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stars" viewBox="0 0 16 16"><path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/></svg>
-                                </button>
-                            </form>
-                        </div>
+                </form>
+                <ul id="suggestions-box-main" class="suggestions-box"></ul>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <div class="f-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" /></svg>
                     </div>
-                    <div id="article" class="content active"><div id="article-body"></div></div>
+                    <div class="f-title">AI要約</div>
+                    <div class="f-desc">長い記事も一瞬で要点を把握。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="f-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>
+                    </div>
+                    <div class="f-title">学習モード</div>
+                    <div class="f-desc">記事からクイズを生成してテスト。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="f-icon" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5h3m-6.75 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-15a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
+                    </div>
+                    <div class="f-title">モダンUI</div>
+                    <div class="f-desc">読みやすさを追求したデザイン。</div>
                 </div>
             </div>
         </div>
+    </main>
+
+    <!-- Article View -->
+    <div id="article-page">
+        <aside id="toc-container">
+            <h2>Contents</h2>
+            <ul id="toc-list"></ul>
+        </aside>
+        
+        <div class="main-scroll-area">
+            <div class="article-content">
+                <h1 id="article-title-main"></h1>
+                <div class="meta-source">出典: フリー百科事典『ウィキペディア（Wikipedia）』</div>
+
+                <!-- AI Summary Area -->
+                <div id="ai-summary">
+                    <div class="ai-label">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stars" viewBox="0 0 16 16"><path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/></svg>
+                        AI要約
+                    </div>
+                    <div id="ai-summary-content"></div>
+                </div>
+
+                <!-- Main Content -->
+                <div id="article-body"></div>
+            </div>
+        </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-note">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+            <span>このサイトはWikipediaの非公式ビューワーです。AIによる回答には誤りが含まれる可能性があります。</span>
+        </div>
+    </footer>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const WORKER_URL = 'https://math-solver-proxy.nden14800.workers.dev';
 
+            // Elements
             const body = document.body;
             const mainPage = document.getElementById('main-page');
             const articlePage = document.getElementById('article-page');
-            const searchFormMain = document.getElementById('search-form-main');
             const searchBoxMain = document.getElementById('search-box-main');
             const suggestionsBoxMain = document.getElementById('suggestions-box-main');
-            const searchFormHeader = document.getElementById('search-form-header');
             const searchBoxHeader = document.getElementById('search-box-header');
             const suggestionsBoxHeader = document.getElementById('suggestions-box-header');
-            const homeBtn = document.querySelector('.site-title-btn');
+            
             const articleTitleMain = document.getElementById('article-title-main');
             const aiSummaryContent = document.getElementById('ai-summary-content');
             const articleBody = document.getElementById('article-body');
             const tocList = document.getElementById('toc-list');
             const tocContainer = document.getElementById('toc-container');
-            const tocToggleBtn = document.getElementById('toc-toggle-btn');
-            const tabs = document.querySelectorAll('.tab');
-            const buttonTabs = document.querySelectorAll('button.tab');
-            const contents = document.querySelectorAll('.content');
-            const aiInputForm = document.getElementById('ai-input-form');
-            const aiInput = document.getElementById('ai-input');
-            const chatContainer = document.querySelector('.chat-container');
-
-            const noteLink = document.getElementById('note-link');
-            const viewLink = document.getElementById('view-link');
-            const editLink = document.getElementById('edit-link');
-            const historyLink = document.getElementById('history-link');
-            // ★★★ 追加したボタンの要素を取得 ★★★
-            const templateLink = document.getElementById('template-link');
             
+            const wikiExternalLink = document.getElementById('wiki-external-link');
+            
+            // Panels & Inputs
+            const aiPanel = document.getElementById('ai-panel');
+            const learningPanel = document.getElementById('learning-panel');
+            const btnAiMode = document.getElementById('btn-ai-mode');
+            const btnLearningMode = document.getElementById('btn-learning-mode');
+            const aiChatContainer = document.getElementById('ai-chat-container');
+            const aiInput = document.getElementById('ai-input');
+            const aiInputForm = document.getElementById('ai-input-form');
+            const btnGenerateQuiz = document.getElementById('btn-generate-quiz');
+            const quizContainer = document.getElementById('quiz-container');
+            const aiArticleNamePlaceholder = document.getElementById('ai-article-name-placeholder');
+
             let currentArticleText = '';
             let currentArticleTitle = '';
 
-            const loadingSpinnerHTML = `<svg class="loading-spinner" viewBox="0 0 50 50"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="3"></circle></svg>`;
+            const loadingSpinner = `<svg class="loading-spinner" viewBox="0 0 50 50"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle></svg>`;
 
-            function showMainPage() {
+            // --- Navigation & View Switching ---
+            document.querySelector('.site-brand').addEventListener('click', () => {
                 body.classList.remove('article-view');
                 articlePage.style.display = 'none';
                 mainPage.style.display = 'flex';
-            }
-            homeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                showMainPage();
+                closePanels();
+                searchBoxMain.value = '';
+                searchBoxHeader.value = '';
             });
 
+            // --- Search Logic ---
             const handleSearch = (query) => {
                 if (query) {
                     fetchWikipediaArticle(query);
@@ -604,9 +565,8 @@
                     suggestionsBoxHeader.style.display = 'none';
                 }
             };
-            
-            searchFormMain.addEventListener('submit', (e) => { e.preventDefault(); handleSearch(searchBoxMain.value.trim()); });
-            searchFormHeader.addEventListener('submit', (e) => { e.preventDefault(); handleSearch(searchBoxHeader.value.trim()); });
+            document.getElementById('search-form-main').addEventListener('submit', (e) => { e.preventDefault(); handleSearch(searchBoxMain.value.trim()); });
+            document.getElementById('search-form-header').addEventListener('submit', (e) => { e.preventDefault(); handleSearch(searchBoxHeader.value.trim()); });
 
             const handleSuggestions = async (query, suggestionsBox) => {
                  if (query.length > 1) {
@@ -642,85 +602,60 @@
                     box.style.display = 'none';
                 }
             }
-            
+
             document.addEventListener('click', (e) => {
                 if (e.target !== searchBoxMain) suggestionsBoxMain.style.display = 'none';
                 if (e.target !== searchBoxHeader) suggestionsBoxHeader.style.display = 'none';
             });
 
+            // --- Article Fetching ---
             async function fetchWikipediaArticle(title) {
                 try {
                     const url = `https://ja.wikipedia.org/w/api.php?action=parse&format=json&page=${encodeURIComponent(title)}&prop=text|sections&origin=*`;
                     const response = await fetch(url);
-                    if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                    if (!response.ok) throw new Error('Network error');
                     const data = await response.json();
                     if (data.error) throw new Error(data.error.info);
-                    if (!data.parse) throw new Error('記事のコンテンツを取得できませんでした。');
+                    if (!data.parse) throw new Error('Content not found');
 
                     displayArticle(data.parse);
                     body.classList.add('article-view');
                     mainPage.style.display = 'none';
                     articlePage.style.display = 'flex';
                 } catch (error) {
-                    console.error('Article fetch error:', error);
-                    alert(`記事の読み込み中にエラーが発生しました: ${error.message}`);
+                    alert(`エラー: ${error.message}`);
                 }
             }
-            
+
             function displayArticle(data) {
                 currentArticleTitle = data.title;
                 articleTitleMain.textContent = currentArticleTitle;
                 searchBoxHeader.value = currentArticleTitle;
+                aiArticleNamePlaceholder.textContent = currentArticleTitle;
 
-                const encodedTitle = encodeURIComponent(currentArticleTitle);
-                noteLink.href = `https://ja.wikipedia.org/wiki/ノート:${encodedTitle}`;
-                viewLink.href = `https://ja.wikipedia.org/wiki/${encodedTitle}`;
-                editLink.href = `https://ja.wikipedia.org/w/index.php?title=${encodedTitle}&action=edit`;
-                historyLink.href = `https://ja.wikipedia.org/w/index.php?title=${encodedTitle}&action=history`;
-                
+                // Update External Link
+                wikiExternalLink.href = `https://ja.wikipedia.org/wiki/${encodeURIComponent(currentArticleTitle)}`;
+
+                // Clean Text
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = data.text['*'];
-                
                 tempDiv.querySelectorAll('img, video, .thumb, .mw-editsection, style, link').forEach(el => el.remove());
-                
                 articleBody.innerHTML = tempDiv.innerHTML;
-
-                // ★★★ ここからテンプレートボタンの表示ロジック ★★★
-                // まず、ボタンを非表示にする
-                templateLink.style.display = 'none';
-
-                // 記事のHTML内からinfobox内のテンプレートへのリンクを探す
-                const infoboxTemplateA = articleBody.querySelector('.infobox a[href^="/wiki/Template:"]');
-                
-                if (infoboxTemplateA) {
-                    const href = infoboxTemplateA.getAttribute('href');
-                    if (href) {
-                        // リンクが見つかった場合、完全なURLを生成してボタンのhrefに設定し、表示する
-                        templateLink.href = `https://ja.wikipedia.org${href}`;
-                        templateLink.style.display = 'flex';
-                    }
-                }
-                // ★★★ ここまでテンプレートボタンの表示ロジック ★★★
                 
                 currentArticleText = tempDiv.textContent || '';
                 
-                buttonTabs.forEach(tab => {
-                    const isArticleTab = tab.dataset.target === 'article';
-                    tab.classList.toggle('active', isArticleTab);
-                });
-                contents.forEach(content => {
-                    const isArticleContent = content.id === 'article';
-                    content.classList.toggle('active', isArticleContent);
-                });
-
                 generateToc(data.sections);
-                resetAiMode(currentArticleTitle);
-
+                
+                // Reset Panels & AI
+                closePanels();
+                resetAiChat();
+                resetQuiz();
+                
+                // Generate Summary
                 if (currentArticleText.trim()) {
                     generateAiSummary(currentArticleTitle, currentArticleText);
                 } else {
-                    aiSummaryContent.innerHTML = '記事からテキストが抽出できなかったため、概要を生成できませんでした。';
-                    console.warn('Could not extract text content from the article to generate summary.');
+                    aiSummaryContent.textContent = '要約を生成できませんでした。';
                 }
             }
 
@@ -731,7 +666,7 @@
                     const a = document.createElement('a');
                     a.href = `#${section.anchor}`;
                     a.textContent = section.line;
-                    a.style.paddingLeft = `${(parseInt(section.level, 10) - 1) * 1}rem`;
+                    a.style.paddingLeft = `${(parseInt(section.level, 10) - 1) * 0.5}rem`;
                     li.appendChild(a);
                     tocList.appendChild(li);
                 });
@@ -740,24 +675,17 @@
                         e.preventDefault();
                         const targetId = link.getAttribute('href').substring(1);
                         const targetElement = document.getElementById(targetId);
-                        if(targetElement) document.querySelector('.content-container').scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
+                        if(targetElement) document.querySelector('.main-scroll-area').scrollTo({ top: targetElement.offsetTop - 80, behavior: 'smooth' });
                     });
                 });
             }
-            tocToggleBtn.addEventListener('click', () => tocContainer.classList.toggle('hidden'));
             
-            buttonTabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    buttonTabs.forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    contents.forEach(content => content.classList.toggle('active', content.id === tab.dataset.target));
-                });
-            });
+            document.getElementById('toc-toggle-btn').addEventListener('click', () => tocContainer.classList.toggle('hidden'));
 
+            // --- API Helper ---
             async function callApi(prompt) {
                  if (WORKER_URL === 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
-                    alert('Cloudflare WorkerのURLが設定されていません。コードを編集してください。');
-                    return null;
+                    alert('Worker URL not configured.'); return null;
                 }
                 try {
                     const response = await fetch(WORKER_URL, { 
@@ -765,71 +693,112 @@
                         headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify({ prompt: prompt }) 
                     });
-                    
                     const data = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(data.error || `サーバーエラー: ${response.status}`);
-                    }
-                    
-                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                    if (text) {
-                        return text;
-                    } else {
-                        throw new Error('AIが有効な回答を生成できませんでした。');
-                    }
+                    return data?.candidates?.[0]?.content?.parts?.[0]?.text;
                 } catch (error) { 
-                    console.error('API/Worker call error:', error); 
-                    alert(`AIの応答取得中にエラーが発生しました: ${error.message}`); 
-                    return null; 
+                    console.error(error); return null; 
                 }
             }
 
+            // --- Panel Logic ---
+            function openPanel(panel) {
+                closePanels();
+                panel.classList.add('open');
+            }
+            function closePanels() {
+                aiPanel.classList.remove('open');
+                learningPanel.classList.remove('open');
+                btnAiMode.classList.remove('active');
+                btnLearningMode.classList.remove('active');
+            }
+
+            btnAiMode.addEventListener('click', () => {
+                if(aiPanel.classList.contains('open')) closePanels();
+                else { openPanel(aiPanel); btnAiMode.classList.add('active'); }
+            });
+
+            btnLearningMode.addEventListener('click', () => {
+                if(learningPanel.classList.contains('open')) closePanels();
+                else { openPanel(learningPanel); btnLearningMode.classList.add('active'); }
+            });
+
+            document.querySelectorAll('.close-panel-btn').forEach(btn => {
+                btn.addEventListener('click', closePanels);
+            });
+
+            // --- AI Summary ---
             async function generateAiSummary(title, text) {
-                aiSummaryContent.innerHTML = loadingSpinnerHTML;
-                const prompt = `以下のWikipedia記事「${title}」の本文を、日本語で3〜4文で簡潔に要約してください。\n\n---\n${text.substring(0, 4000)}\n---`;
+                aiSummaryContent.innerHTML = loadingSpinner;
+                const prompt = `記事「${title}」を日本語で3文程度で簡潔に要約してください。\n\n${text.substring(0, 3000)}`;
                 const summary = await callApi(prompt);
-                aiSummaryContent.innerHTML = summary ? summary.replace(/\n/g, '<br>') : '概要の生成に失敗しました。';
+                aiSummaryContent.innerHTML = summary ? summary.replace(/\n/g, '<br>') : '生成失敗';
+            }
+
+            // --- AI Assistant Chat ---
+            function resetAiChat() {
+                aiChatContainer.innerHTML = '';
+                appendAiMessage(`「${currentArticleTitle}」についてのご質問にお答えします。`);
             }
             
-            function resetAiMode(title) {
-                chatContainer.innerHTML = '';
-                appendMessage(`「${title}」について、どんなことでも質問してください。`, 'ai');
-            }
-
             aiInputForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const userInput = aiInput.value.trim();
-                if (!userInput) return;
+                const text = aiInput.value.trim();
+                if(!text) return;
                 
-                appendMessage(userInput, 'user');
+                appendUserMessage(text);
                 aiInput.value = '';
-                aiInput.style.height = 'auto';
-
-                const loadingMessage = appendMessage(loadingSpinnerHTML, 'ai');
                 
-                const chatPrompt = `あなたはWikipediaの記事「${currentArticleTitle}」に関する質問に答える専門のアシスタントです。以下の記事本文を参考に、ユーザーの質問に親切かつ正確に回答してください。\n\n--- 記事本文 (4000文字まで) ---\n${currentArticleText.substring(0, 4000)}\n---\n\nユーザーの質問: ${userInput}`;
-
-                const aiResponse = await callApi(chatPrompt);
+                const loadingMsg = appendAiMessage(loadingSpinner);
+                const prompt = `あなたはWikipedia記事「${currentArticleTitle}」の専門ガイドです。以下の記事本文に基づき、ユーザーの質問「${text}」に答えてください。\n\n---本文---\n${currentArticleText.substring(0, 3500)}`;
                 
-                if (aiResponse) {
-                    loadingMessage.innerHTML = aiResponse.replace(/\n/g, '<br>');
+                const response = await callApi(prompt);
+                loadingMsg.innerHTML = response ? response.replace(/\n/g, '<br>') : 'エラーが発生しました。';
+            });
+
+            function appendUserMessage(text) {
+                const div = document.createElement('div');
+                div.className = 'chat-message user-message';
+                div.textContent = text;
+                aiChatContainer.appendChild(div);
+                aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
+            }
+            function appendAiMessage(html) {
+                const div = document.createElement('div');
+                div.className = 'chat-message ai-message';
+                div.innerHTML = html;
+                aiChatContainer.appendChild(div);
+                aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
+                return div;
+            }
+
+            // --- Learning Mode (Quiz) ---
+            function resetQuiz() {
+                quizContainer.innerHTML = '<p style="text-align:center;color:var(--text-muted);">ボタンを押してクイズを作成してください。</p>';
+                btnGenerateQuiz.style.display = 'block';
+            }
+
+            btnGenerateQuiz.addEventListener('click', async () => {
+                btnGenerateQuiz.style.display = 'none';
+                quizContainer.innerHTML = `<div style="text-align:center;padding:2rem;">${loadingSpinner}<p>クイズを生成中...</p></div>`;
+                
+                const prompt = `記事「${currentArticleTitle}」の内容に基づき、3択クイズを1問作成してください。\nフォーマット:\n問題: [問題文]\nA) [選択肢1]\nB) [選択肢2]\nC) [選択肢3]\n正解: [正解のアルファベット]\n解説: [短い解説]`;
+                
+                const response = await callApi(prompt);
+                if(response) {
+                    // Simple parsing for display (robustness depends on AI output consistency)
+                    const html = response.replace(/\n/g, '<br>');
+                    quizContainer.innerHTML = `<div class="chat-message ai-message" style="width:100%;">${html}</div><button class="quiz-btn" onclick="document.getElementById('btn-generate-quiz').click()">次の問題を作成</button>`;
+                    // Restore button hidden logic handled by innerHTML replacement above, but needed for re-generation flow
+                    const nextBtn = quizContainer.querySelector('.quiz-btn');
+                    nextBtn.addEventListener('click', () => {
+                        btnGenerateQuiz.click();
+                    });
                 } else {
-                    loadingMessage.textContent = '申し訳ありません、応答を取得できませんでした。';
+                    quizContainer.innerHTML = 'クイズの生成に失敗しました。もう一度お試しください。';
+                    btnGenerateQuiz.style.display = 'block';
                 }
             });
 
-            function appendMessage(text, sender) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('chat-message', `${sender}-message`);
-                messageDiv.innerHTML = text;
-                chatContainer.appendChild(messageDiv);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                return messageDiv;
-            }
-            
-            aiInput.addEventListener('input', () => { aiInput.style.height = 'auto'; aiInput.style.height = (aiInput.scrollHeight) + 'px'; });
         });
     </script>
 </body>
